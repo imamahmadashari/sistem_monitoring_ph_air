@@ -1,0 +1,81 @@
+// Memasukkan Library PubSubClient
+#include <PubSubClient.h>
+// Memasukkan library Ethernet
+#include <Ethernet.h>
+
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+IPAddress ip(192,168,1,177);
+
+// Mendefinisikan alamat IP broker MQTT
+const char* mqtt_server = "192.168.1.100";
+// Mendefinisikan port broker MQTT 
+const int mqtt_port = 1883;
+
+// Membuat objek klien Ethernet
+EthernetClient ethClient;
+// Membuat objek klien MQTT
+PubSubClient client(ethClient);
+
+// Mendefinisikan pin sensor PH
+const int phPin = A0;
+//Mendefinisikan variabel untuk menyimpan nilai pH
+float phValue = 0;
+
+// Fungsi untuk menghubungkan Arduino dengan broker MQTT
+void reconnect() {
+  // Loop sampai terhubung
+  while (!client.connected()) {
+    Serial.print("Mencoba terhubung dengan broker MQTT...");
+    // Mencoba terhubung dengan ID klien "Arduino"
+    if (client.connect("Arduino")) {
+      Serial.println("terhubung");
+    } else {
+      Serial.print("gagal, rc=");
+      Serial.print(client.state());
+      Serial.println(" coba lagi dalam 5 detik");
+
+      // Menunggu 5 detik
+      delay(5000);
+    }
+  }
+}
+
+// Fungsi setup yang dijalankan sekali saat awal program
+void setup() {
+  // Menginisialisasi serial monitor dengan baud rate 9600
+  Serial.begin(9600);
+  // Menginisialisasi koneksi Ethernet dengan alaman IP Arduino
+  Ethernet.begin(mac, ip);
+  // Menginisialisasi koneksi MQTT dengan alamat IP dan port broker MQTT
+  client.setServer(mqtt_server, mqtt_port);
+}
+
+// Fungsi loop yang berjalan secara berulang selama program berjalan
+void loop() {
+  // Jika klien MQTT tidak terhubung dengan broker MQTT, maka panggil fungsi reconnect
+  if (!client.connected()) {
+    reconnect();
+  }
+  // Jika klien MQTT terhubung denan broker MQTT, maka berjalan fungsi loop klien MQTT
+  client.loop();
+
+  // Membaca data analog dari sensor pH
+  int phValueRaw = analogRead(phPin);
+  // Mengubah data analog menjadi nilai pH dengan rumus tertentu
+  phValue = -5.70 * phValueRaw / 1024 + 21.34
+  // Membulatkan nilai pH hingga dua angka desimal
+  phValue = (int)(phValue * 100) / 100.0;
+
+  // Menampilkan nilai pH ke serial monitor
+  Serial.print( "Nilai PH: ");
+  Serial.println(phValue);
+
+  // Mengubah nilai pH menjadi string
+  String phString = String(phValue);
+
+  // Mempublikastkan nilai pH ke topik "pH" di broker MQTT
+  client.publish( "pH" ,phString.c_str( ));
+
+  // Menunggu selama 10 detik sebelum membaca dan mengirim data lagi
+  delay( 10000);
+}

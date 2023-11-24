@@ -1,0 +1,9 @@
+var sum = 0;
+var count = msg.payload.length;
+for (var i = 0; i < count; i++) {
+   sum += msg.payload[i].ph;
+}
+var avg = sum / count;
+msg.payload = avg;
+
+return msg;
